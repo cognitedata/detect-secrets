@@ -11,7 +11,6 @@ from detect_secrets.core.usage import ParserBuilder
 from detect_secrets.plugins.common import initialize
 from detect_secrets.util import build_automaton
 
-
 def parse_args(argv):
     return ParserBuilder()\
         .add_console_use_arguments()\
@@ -30,7 +29,7 @@ def main(argv=sys.argv[1:]):
         if config_values.get('exclude_lines') is not None:
             args.exclude_lines = config_values.get('exclude_lines')
         if config_values.get('exclude_files') is not None:
-            args.exclude_files = config_values.get('exclude_files')
+            args.exclude_files.extend(config_values.get('exclude_files'))
 
     if args.verbose:  # pragma: no cover
         log.set_debug_level(args.verbose)
@@ -156,7 +155,7 @@ def _perform_scan(args, plugins, automaton, word_list_hash):
     # Favors CLI arguments over existing baseline configuration
     if old_baseline:
         if not args.exclude_files:
-            args.exclude_files = _get_exclude_files(old_baseline)
+            args.exclude_files = [_get_exclude_files(old_baseline)]
 
         if (
             not args.exclude_lines
@@ -237,9 +236,9 @@ def _add_baseline_to_exclude_files(args):
     baseline_name_regex = r'^{}$'.format(args.import_filename[0])
 
     if not args.exclude_files:
-        args.exclude_files = baseline_name_regex
+        args.exclude_files = [baseline_name_regex]
     elif baseline_name_regex not in args.exclude_files:
-        args.exclude_files += r'|{}'.format(baseline_name_regex)
+        args.exclude_files.append(r'|{}'.format(baseline_name_regex))
 
 
 if __name__ == '__main__':
