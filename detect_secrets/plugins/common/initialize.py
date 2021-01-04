@@ -1,7 +1,9 @@
 """Intelligent initialization of plugins."""
 from detect_secrets.core.log import log
 from detect_secrets.core.usage import PluginOptions
-from detect_secrets.plugins.common.util import get_mapping_from_secret_type_to_class_name
+from detect_secrets.plugins.common.util import (
+    get_mapping_from_secret_type_to_class_name,
+)
 from detect_secrets.plugins.common.util import import_plugins
 
 
@@ -19,7 +21,7 @@ def from_parser_builder(
     :type custom_plugin_paths: Tuple[str]
     :param custom_plugin_paths: possibly empty tuple of paths that have custom plugins.
 
-    :type exclude_lines_regex: str|None
+    :type exclude_lines_regex: Tuple[str]|None
     :param exclude_lines_regex: optional regex for ignored lines.
 
     :type automaton: ahocorasick.Automaton|None
@@ -46,7 +48,9 @@ def from_parser_builder(
     return tuple(output)
 
 
-def _get_prioritized_parameters(plugins_dict, is_using_default_value_map, prefer_default=True):
+def _get_prioritized_parameters(
+    plugins_dict, is_using_default_value_map, prefer_default=True
+):
     """
     :type plugins_dict: dict(plugin_name => plugin_params)
     :param plugin_dict: mapping of plugin name to all plugin params
@@ -80,13 +84,14 @@ def merge_plugins_from_baseline(baseline_plugins, args, automaton):
 
     :returns: tuple of initialized plugins
     """
+
     def _remove_key(d, key):
         r = dict(d)
         r.pop(key)
         return r
 
     baseline_plugins_dict = {
-        vars(plugin)['name']: _remove_key(vars(plugin), 'name')
+        vars(plugin)["name"]: _remove_key(vars(plugin), "name")
         for plugin in baseline_plugins
     }
 
@@ -105,7 +110,7 @@ def merge_plugins_from_baseline(baseline_plugins, args, automaton):
                 plugins_dict[plugin_name][param_name] = param_value
             except KeyError:  # pragma: no cover
                 log.warning(
-                    'Baseline contains plugin {} which is not in all plugins! Ignoring...',
+                    "Baseline contains plugin {} which is not in all plugins! Ignoring...",
                     plugin_name,
                 )
 
@@ -136,8 +141,8 @@ def merge_plugins_from_baseline(baseline_plugins, args, automaton):
             plugins_dict[plugin_name][param_name] = param_value
         except KeyError:
             log.warning(
-                '{} specified, but {} not configured! Ignoring...',
-                ''.join(['--', param_name.replace('_', '-')]),
+                "{} specified, but {} not configured! Ignoring...",
+                "".join(["--", param_name.replace("_", "-")]),
                 plugin_name,
             )
 
@@ -177,15 +182,15 @@ def from_plugin_classname(
     try:
         klass = import_plugins(custom_plugin_paths)[plugin_classname]
     except KeyError:
-        log.error('Error: No such `{}` plugin to initialize.'.format(plugin_classname))
-        log.error('Chances are you should run `pre-commit autoupdate`.')
+        log.error("Error: No such `{}` plugin to initialize.".format(plugin_classname))
+        log.error("Chances are you should run `pre-commit autoupdate`.")
         log.error(
-            'This error can occur when using a baseline that was made by '
-            'a newer detect-secrets version than the one running.',
+            "This error can occur when using a baseline that was made by "
+            "a newer detect-secrets version than the one running.",
         )
         log.error(
-            'It can also occur if the baseline has custom plugin paths, '
-            'but the `--custom-plugins` option was not passed.',
+            "It can also occur if the baseline has custom plugin paths, "
+            "but the `--custom-plugins` option was not passed.",
         )
         raise TypeError
 
@@ -197,7 +202,7 @@ def from_plugin_classname(
             **kwargs
         )
     except TypeError:
-        log.error('Unable to initialize plugin!')
+        log.error("Unable to initialize plugin!")
         raise
 
     return instance
@@ -229,19 +234,17 @@ def from_secret_type(secret_type, plugins_used, custom_plugin_paths):
         return None
 
     for plugin in plugins_used:
-        if plugin['name'] == classname:
+        if plugin["name"] == classname:
             plugin_init_vars = plugin.copy()
-            plugin_init_vars.pop('name')
+            plugin_init_vars.pop("name")
 
             return from_plugin_classname(
                 classname,
                 custom_plugin_paths=custom_plugin_paths,
-
                 # `audit` does not need to
                 # perform exclusion, filtering or verification
                 exclude_lines_regex=None,
                 automaton=None,
                 should_verify_secrets=False,
-
                 **plugin_init_vars
             )
