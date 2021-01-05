@@ -60,7 +60,7 @@ class YamlFileParser:
         node = yaml.composer.Composer.compose_node(self.loader, parent, index)
         node.__line__ = line + 1
 
-        if node.tag.endswith(':map'):
+        if node.tag.endswith(":map"):
             return self._tag_dict_values(node)
 
         # TODO: Not sure if need to do :seq
@@ -75,10 +75,7 @@ class YamlFileParser:
         """
         new_values = []
         for key, value in map_node.value:
-            if not (
-                value.tag.endswith(':str') or
-                value.tag.endswith(':binary')
-            ):
+            if not (value.tag.endswith(":str") or value.tag.endswith(":binary")):
                 new_values.append((key, value))
                 continue
 
@@ -86,24 +83,24 @@ class YamlFileParser:
                 tag=map_node.tag,
                 value=[
                     self._create_key_value_pair_for_mapping_node_value(
-                        key='__value__',
+                        key="__value__",
                         value=value.value,
                         tag=value.tag,
                     ),
                     self._create_key_value_pair_for_mapping_node_value(
-                        key='__line__',
+                        key="__line__",
                         value=str(value.__line__),
-                        tag='tag:yaml.org,2002:int',
+                        tag="tag:yaml.org,2002:int",
                     ),
                     self._create_key_value_pair_for_mapping_node_value(
-                        key='__is_binary__',
-                        value=str(value.tag.endswith(':binary')),
-                        tag='tag:yaml.org,2002:bool',
+                        key="__is_binary__",
+                        value=str(value.tag.endswith(":binary")),
+                        tag="tag:yaml.org,2002:bool",
                     ),
                     self._create_key_value_pair_for_mapping_node_value(
-                        key='__original_key__',
+                        key="__original_key__",
                         value=key.value,
-                        tag='tag:yaml.org,2002:str',
+                        tag="tag:yaml.org,2002:str",
                     ),
                 ],
             )
@@ -123,7 +120,7 @@ class YamlFileParser:
     def _create_key_value_pair_for_mapping_node_value(key, value, tag):
         return (
             yaml.nodes.ScalarNode(
-                tag='tag:yaml.org,2002:str',
+                tag="tag:yaml.org,2002:str",
                 value=key,
             ),
             yaml.nodes.ScalarNode(
@@ -145,14 +142,9 @@ class YamlFileParser:
         """
         ignored_lines = set()
 
-        for line_number, line in enumerate(self.content.split('\n'), 1):
-            if (
-                ALLOWLIST_REGEX['yaml'].search(line)
-
-                or (
-                    self.exclude_lines_regex and
-                    self.exclude_lines_regex.search(line)
-                )
+        for line_number, line in enumerate(self.content.split("\n"), 1):
+            if ALLOWLIST_REGEX["yaml"].search(line) or any(
+                re.search(line) for re in self.exclude_lines_regex
             ):
                 ignored_lines.add(line_number)
 

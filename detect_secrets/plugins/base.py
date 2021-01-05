@@ -47,6 +47,7 @@ class BasePlugin:
     :type default_options: Dict[str, Any]
     :param default_options: configurable options to modify plugin behavior
     """
+
     __metaclass__ = ABCMeta
 
     @abstractproperty
@@ -61,7 +62,7 @@ class BasePlugin:
         **kwargs
     ):
         """
-        :type exclude_lines_regex: str|None
+        :type exclude_lines_regex: Tuple[str]
         :param exclude_lines_regex: optional regex for ignored lines.
 
         :type should_verify: bool
@@ -71,9 +72,9 @@ class BasePlugin:
         applicable to this plugin
         """
         self.exclude_lines_regex = (
-            re.compile(exclude_lines_regex)
+            [re.compile(el) for el in exclude_lines_regex]
             if exclude_lines_regex
-            else None
+            else []
         )
 
         self.should_verify = should_verify
@@ -83,34 +84,26 @@ class BasePlugin:
     @classproperty
     def disable_flag_text(cls):
         name = cls.__name__
-        if name.endswith('Detector'):
-            name = name[:-len('Detector')]
+        if name.endswith("Detector"):
+            name = name[: -len("Detector")]
 
         # Turn camel case into hyphenated strings
-        name_hyphen = ''
+        name_hyphen = ""
         for letter in name:
             if letter.upper() == letter and name_hyphen:
-                name_hyphen += '-'
+                name_hyphen += "-"
             name_hyphen += letter.lower()
 
-        return 'no-{}-scan'.format(name_hyphen)
+        return "no-{}-scan".format(name_hyphen)
 
     @classproperty
     def default_options(cls):
         return {}
 
     def _is_excluded_line(self, line):
-        return (
-            any(
-                allowlist_regex.search(line)
-                for allowlist_regex in ALLOWLIST_REGEXES
-            )
-            or
-            (
-                self.exclude_lines_regex and
-                self.exclude_lines_regex.search(line)
-            )
-        )
+        return any(
+            allowlist_regex.search(line) for allowlist_regex in ALLOWLIST_REGEXES
+        ) or any(re.search(line) for re in self.exclude_lines_regex)
 
     def analyze(self, file, filename):
         """
@@ -125,11 +118,7 @@ class BasePlugin:
         file_lines = tuple(file.readlines())
         for line_num, line in enumerate(file_lines, start=1):
             results = self.analyze_line(line, line_num, filename)
-            if (
-                not results
-                or
-                self._is_excluded_line(line)
-            ):
+            if not results or self._is_excluded_line(line):
                 continue
 
             if not self.should_verify:
@@ -216,13 +205,13 @@ class BasePlugin:
         results = self.analyze_line(
             string,
             line_num=0,
-            filename='does_not_matter',
+            filename="does_not_matter",
         )
         if not results:
-            return 'False'
+            return "False"
 
         if not self.should_verify:
-            return 'True'
+            return "True"
 
         verified_result = VerifiedResult.UNVERIFIED
         for result in results:
@@ -232,14 +221,14 @@ class BasePlugin:
                 break
 
         output = {
-            VerifiedResult.VERIFIED_FALSE: 'False (verified)',
-            VerifiedResult.VERIFIED_TRUE: 'True  (verified)',
-            VerifiedResult.UNVERIFIED: 'True  (unverified)',
+            VerifiedResult.VERIFIED_FALSE: "False (verified)",
+            VerifiedResult.VERIFIED_TRUE: "True  (verified)",
+            VerifiedResult.UNVERIFIED: "True  (unverified)",
         }
 
         return output[verified_result]
 
-    def verify(self, token, context=''):
+    def verify(self, token, context=""):
         """
         To increase accuracy and reduce false positives, plugins can also
         optionally declare a method to verify their status.
@@ -262,15 +251,16 @@ class BasePlugin:
         :type token: str
         :param token: secret found by current plugin
         """
-        return any(
-            func(token)
-            for func in self.false_positive_heuristics
-        ) if self.false_positive_heuristics else False
+        return (
+            any(func(token) for func in self.false_positive_heuristics)
+            if self.false_positive_heuristics
+            else False
+        )
 
     @property
     def __dict__(self):
         return {
-            'name': self.__class__.__name__,
+            "name": self.__class__.__name__,
         }
 
 
@@ -289,6 +279,7 @@ class RegexBasedDetector(BasePlugin):
             re.compile(r'foo'),
         )
     """
+
     __metaclass__ = ABCMeta
 
     @abstractproperty
@@ -304,17 +295,17 @@ class RegexBasedDetector(BasePlugin):
         assignment would include =,:,:=,::
         keyname and value supports optional quotes
         """
-        begin = r'(?:(?<=\W)|(?<=^))'
+        begin = r"(?:(?<=\W)|(?<=^))"
         opt_quote = r'(?:"|\'|)'
-        opt_open_square_bracket = r'(?:\[|)'
-        opt_close_square_bracket = r'(?:\]|)'
-        opt_dash_undrscr = r'(?:_|-|)'
-        opt_space = r'(?: *)'
-        assignment = r'(?:=|:|:=|=>| +|::)'
+        opt_open_square_bracket = r"(?:\[|)"
+        opt_close_square_bracket = r"(?:\]|)"
+        opt_dash_undrscr = r"(?:_|-|)"
+        opt_space = r"(?: *)"
+        assignment = r"(?:=|:|:=|=>| +|::)"
         return re.compile(
-            r'{begin}{opt_open_square_bracket}{opt_quote}{prefix_regex}{opt_dash_undrscr}'
-            '{secret_keyword_regex}{opt_quote}{opt_close_square_bracket}{opt_space}'
-            '{assignment}{opt_space}{opt_quote}{secret_regex}{opt_quote}'.format(
+            r"{begin}{opt_open_square_bracket}{opt_quote}{prefix_regex}{opt_dash_undrscr}"
+            "{secret_keyword_regex}{opt_quote}{opt_close_square_bracket}{opt_space}"
+            "{assignment}{opt_space}{opt_quote}{secret_regex}{opt_quote}".format(
                 begin=begin,
                 opt_open_square_bracket=opt_open_square_bracket,
                 opt_quote=opt_quote,
@@ -325,7 +316,8 @@ class RegexBasedDetector(BasePlugin):
                 opt_space=opt_space,
                 assignment=assignment,
                 secret_regex=secret_regex,
-            ), flags=re.IGNORECASE,
+            ),
+            flags=re.IGNORECASE,
         )
 
     def analyze_string_content(self, string, line_num, filename):

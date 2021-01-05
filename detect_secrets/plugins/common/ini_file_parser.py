@@ -3,7 +3,6 @@ import re
 
 
 class EfficientParsingError(configparser.ParsingError):
-
     def append(self, lineno, line):
         """
         Rather than inefficiently add all the lines in the file
@@ -19,7 +18,7 @@ configparser.ParsingError = EfficientParsingError
 
 class IniFileParser:
 
-    _comment_regex = re.compile(r'\s*[;#]')
+    _comment_regex = re.compile(r"\s*[;#]")
 
     def __init__(self, file, add_header=False, exclude_lines_regex=None):
         """
@@ -40,7 +39,7 @@ class IniFileParser:
         if add_header:
             # This supports environment variables, or other files that look
             # like config files, without a section header.
-            content = '[global]\n' + content
+            content = "[global]\n" + content
 
         self.parser.read_string(content)
 
@@ -97,24 +96,23 @@ class IniFileParser:
             if not line.strip() or self._comment_regex.match(line):
                 continue
 
-            if (
-                self.exclude_lines_regex and
-                self.exclude_lines_regex.search(line)
-            ):
+            if any(re.search(line) for re in self.exclude_lines_regex):
                 continue
 
             if current_value_list_index == 0:
                 first_line_regex = re.compile(
-                    r'^\s*{}[ :=]+{}'.format(
+                    r"^\s*{}[ :=]+{}".format(
                         re.escape(key),
                         re.escape(values_list[current_value_list_index]),
                     ),
                 )
                 if first_line_regex.match(line):
-                    output.append((
-                        values_list[current_value_list_index],
-                        self.line_offset + index + 1,
-                    ))
+                    output.append(
+                        (
+                            values_list[current_value_list_index],
+                            self.line_offset + index + 1,
+                        )
+                    )
                     current_value_list_index += 1
                 continue
 
@@ -126,10 +124,12 @@ class IniFileParser:
                 lines_modified = True
                 break
             else:
-                output.append((
-                    values_list[current_value_list_index],
-                    self.line_offset + index + 1,
-                ))
+                output.append(
+                    (
+                        values_list[current_value_list_index],
+                        self.line_offset + index + 1,
+                    )
+                )
 
                 current_value_list_index += 1
 

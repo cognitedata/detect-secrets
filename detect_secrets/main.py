@@ -11,30 +11,33 @@ from detect_secrets.core.usage import ParserBuilder
 from detect_secrets.plugins.common import initialize
 from detect_secrets.util import build_automaton
 
+
 def parse_args(argv):
-    return ParserBuilder()\
-        .add_console_use_arguments()\
-        .parse_args(argv)
+    return ParserBuilder().add_console_use_arguments().parse_args(argv)
 
 
 def main(argv=sys.argv[1:]):
     if len(sys.argv) == 1:  # pragma: no cover
-        sys.argv.append('--help')
+        sys.argv.append("--help")
 
     args = parse_args(argv)
 
     if args.config:
         config_file = args.config.read()
         config_values = yaml.safe_load(config_file) or {}
-        if config_values.get('exclude_lines') is not None:
-            args.exclude_lines = config_values.get('exclude_lines')
-        if config_values.get('exclude_files') is not None:
-            args.exclude_files.extend(config_values.get('exclude_files'))
+        if config_values.get("exclude_lines") is not None:
+            exclude_lines = config_values.get("exclude_lines")
+            if type(exclude_lines) in [str, bytes]:
+                args.exclude_lines.append(exclude_lines)
+            else:
+                args.exclude_lines.extend(exclude_lines)
+        if config_values.get("exclude_files") is not None:
+            args.exclude_files.extend(config_values.get("exclude_files"))
 
     if args.verbose:  # pragma: no cover
         log.set_debug_level(args.verbose)
 
-    if args.action == 'scan':
+    if args.action == "scan":
         automaton = None
         word_list_hash = None
         if args.word_list_file:
@@ -77,7 +80,7 @@ def main(argv=sys.argv[1:]):
                     ),
                 )
 
-    elif args.action == 'audit':
+    elif args.action == "audit":
         if not args.diff and not args.display_results:
             audit.audit_baseline(args.filename[0])
             return 0
@@ -88,7 +91,7 @@ def main(argv=sys.argv[1:]):
 
         if len(args.filename) != 2:
             print(
-                'Must specify two files to compare!',
+                "Must specify two files to compare!",
                 file=sys.stderr,
             )
             return 1
@@ -97,7 +100,7 @@ def main(argv=sys.argv[1:]):
             audit.compare_baselines(args.filename[0], args.filename[1])
         except audit.RedundantComparisonError:
             print(
-                'No difference, because it\'s the same file!',
+                "No difference, because it's the same file!",
                 file=sys.stderr,
             )
 
@@ -106,7 +109,7 @@ def main(argv=sys.argv[1:]):
 
 def _get_plugins_from_baseline(old_baseline):
     plugins = []
-    if old_baseline and 'plugins_used' in old_baseline:
+    if old_baseline and "plugins_used" in old_baseline:
         secrets_collection = SecretsCollection.load_baseline_from_dict(old_baseline)
         plugins = secrets_collection.plugins
     return plugins
@@ -121,14 +124,14 @@ def _scan_string(line, plugins):
     )
 
     output = [
-        ('{:%d}: {}' % longest_plugin_name_length).format(
+        ("{:%d}: {}" % longest_plugin_name_length).format(
             plugin.__class__.__name__,
             plugin.adhoc_scan(line),
         )
         for plugin in plugins
     ]
 
-    print('\n'.join(sorted(output)))
+    print("\n".join(sorted(output)))
 
 
 def _perform_scan(args, plugins, automaton, word_list_hash):
@@ -157,23 +160,14 @@ def _perform_scan(args, plugins, automaton, word_list_hash):
         if not args.exclude_files:
             args.exclude_files = [_get_exclude_files(old_baseline)]
 
-        if (
-            not args.exclude_lines
-            and old_baseline.get('exclude')
-        ):
-            args.exclude_lines = old_baseline['exclude']['lines']
+        if not args.exclude_lines and old_baseline.get("exclude"):
+            args.exclude_lines = old_baseline["exclude"]["lines"]
 
-        if (
-            not args.word_list_file
-            and old_baseline.get('word_list')
-        ):
-            args.word_list_file = old_baseline['word_list']['file']
+        if not args.word_list_file and old_baseline.get("word_list"):
+            args.word_list_file = old_baseline["word_list"]["file"]
 
-        if (
-            not args.custom_plugin_paths
-            and old_baseline.get('custom_plugin_paths')
-        ):
-            args.custom_plugin_paths = old_baseline['custom_plugin_paths']
+        if not args.custom_plugin_paths and old_baseline.get("custom_plugin_paths"):
+            args.custom_plugin_paths = old_baseline["custom_plugin_paths"]
 
     # If we have knowledge of an existing baseline file, we should use
     # that knowledge and add it to our exclude_files regex.
@@ -223,23 +217,23 @@ def _get_exclude_files(old_baseline):
 
     :rtype: str|None
     """
-    if old_baseline.get('exclude'):
-        return old_baseline['exclude']['files']
-    if old_baseline.get('exclude_regex'):
-        return old_baseline['exclude_regex']
+    if old_baseline.get("exclude"):
+        return old_baseline["exclude"]["files"]
+    if old_baseline.get("exclude_regex"):
+        return old_baseline["exclude_regex"]
 
 
 def _add_baseline_to_exclude_files(args):
     """
     Modifies args.exclude_files in-place.
     """
-    baseline_name_regex = r'^{}$'.format(args.import_filename[0])
+    baseline_name_regex = r"^{}$".format(args.import_filename[0])
 
     if not args.exclude_files:
         args.exclude_files = [baseline_name_regex]
     elif baseline_name_regex not in args.exclude_files:
-        args.exclude_files.append(r'|{}'.format(baseline_name_regex))
+        args.exclude_files.append(r"|{}".format(baseline_name_regex))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main())
